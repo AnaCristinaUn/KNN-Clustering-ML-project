@@ -1,5 +1,6 @@
 #importing necessary libraries
 import pandas as pd
+import matplotlib.pyplot as plt
 from pathlib import Path
 from collections import Counter
 # from preprocessing import preprocess_text
@@ -45,3 +46,22 @@ for (CBK, count) in data["CBK"].value_counts().items():                         
     percentage = count / len(data) * 100
     print(f"\nChargeback: {CBK} ({count} transactions, {percentage:.1f}%)")                # Printing the category, count, and share of all transactions
     print(f"Median amount: {median_cbk_amount:.2f}")                                       # Printing the median amount for the current "CBK" value
+
+# Comparing amount distributions and chargeback rates
+amount_groups = pd.qcut(amounts, q=4)                                                      # Dividing the "Amount" column into 4 quantile-based groups
+# A quantile is a value that divides a dataset into groups containing approximately equal numbers of observations.
+# In this case, qcut is used to create 4 groups (quartiles) based on the distribution of transaction amounts. 25%
+chargeback_rates = data.groupby(amount_groups, observed=True)["CBK"].apply(                # Grouping the data by the amount groups and calculating the chargeback rate for each group
+    lambda labels: labels.eq("Yes").mean()                                                 # Calculating the mean of the boolean series where "CBK" is "Yes" to get the chargeback rate
+)
+
+print("\nChargeback rate by amount group:")
+for amount_group, rate in chargeback_rates.items():
+    print(f"{amount_group}: {rate:.1%}")
+
+data.boxplot(column="Amount", by="CBK")                                                    # Creating a boxplot of the "Amount" column grouped by the "CBK" column
+plt.title("Transaction amounts by chargeback status")                                      # Setting the title of the boxplot
+plt.suptitle("")                                                                           # Removing the default title to avoid overlap with the main title
+plt.xlabel("Chargeback (CBK)")                                                             # Setting the x-axis label of the boxplot
+plt.ylabel("Amount")                                                                       # Setting the y-axis label of the boxplot
+plt.show()
