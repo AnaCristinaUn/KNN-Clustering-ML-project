@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from pathlib import Path
-from collections import Counter
 # from preprocessing import preprocess_text
 
 # Getting the dataset
@@ -73,6 +72,11 @@ daily = dated_data.set_index("Date").resample("D").agg(                         
     Chargeback_Rate=("CBK", lambda labels: labels.eq("Yes").mean()),
 )
 
+print("\nDate summary:")
+print(f"Date range: {dated_data['Date'].min()} to {dated_data['Date'].max()}")
+print(f"Days with transactions: {len(daily)}")
+print(f"Average transactions per day: {daily['Transactions'].mean():.1f}")
+
 fig, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)                               # Creating a figure with two subplots (axes) arranged vertically, sharing the x-axis
 daily["Transactions"].plot(ax=axes[0], marker="o")                                         # Plotting the daily number of transactions on the first subplot with markers for each data point
 axes[0].set_title("Transactions per day")                                                  # Setting the title of the first subplot
@@ -85,5 +89,13 @@ axes[1].xaxis.set_major_locator(mdates.DayLocator(interval=1))
 axes[1].xaxis.set_major_formatter(mdates.DateFormatter("%d"))
 axes[1].tick_params(axis="x", labelrotation=90)
 fig.tight_layout()
+
+# Showing the distribution of transaction amounts
+plt.figure()
+plt.hist(amounts, bins=30, edgecolor="black")                                             # Creating a histogram of the transaction amounts with 30 bins and black edges for better visibility
+plt.title("Distribution of transaction amounts")
+plt.xlabel("Amount")
+plt.ylabel("Number of transactions")
+plt.tight_layout()
 
 plt.show()
