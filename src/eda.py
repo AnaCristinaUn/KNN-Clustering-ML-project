@@ -1,6 +1,7 @@
 #importing necessary libraries
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from pathlib import Path
 from collections import Counter
 # from preprocessing import preprocess_text
@@ -64,4 +65,25 @@ plt.title("Transaction amounts by chargeback status")                           
 plt.suptitle("")                                                                           # Removing the default title to avoid overlap with the main title
 plt.xlabel("Chargeback (CBK)")                                                             # Setting the x-axis label of the boxplot
 plt.ylabel("Amount")                                                                       # Setting the y-axis label of the boxplot
+
+# Analyzing daily transaction and chargeback patterns
+dated_data = data.assign(Date=pd.to_datetime(data["Date"]))                                # Converting the "Date" column to datetime format and creating a new DataFrame with the converted dates
+daily = dated_data.set_index("Date").resample("D").agg(                                    # Resampling the data by day and aggregating the number of transactions and chargeback rate for each day
+    Transactions=("CBK", "size"),
+    Chargeback_Rate=("CBK", lambda labels: labels.eq("Yes").mean()),
+)
+
+fig, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)                               # Creating a figure with two subplots (axes) arranged vertically, sharing the x-axis
+daily["Transactions"].plot(ax=axes[0], marker="o")                                         # Plotting the daily number of transactions on the first subplot with markers for each data point
+axes[0].set_title("Transactions per day")                                                  # Setting the title of the first subplot
+axes[0].set_ylabel("Transactions")                                                         # Setting the y-axis label of the first subplot
+daily["Chargeback_Rate"].plot(ax=axes[1], marker="o")                                      # Plotting the daily chargeback rate on the second subplot with markers for each data point
+axes[1].set_title("Daily chargeback rate")
+axes[1].set_ylabel("Rate")
+axes[1].set_xlabel("Day of May 2015")
+axes[1].xaxis.set_major_locator(mdates.DayLocator(interval=1))
+axes[1].xaxis.set_major_formatter(mdates.DateFormatter("%d"))
+axes[1].tick_params(axis="x", labelrotation=90)
+fig.tight_layout()
+
 plt.show()
