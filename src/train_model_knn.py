@@ -1,7 +1,8 @@
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, f1_score
 
@@ -115,6 +116,136 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+# KNN hyperparameter tuning: weights and distance metric
+
+weight_options = ["uniform", "distance"]
+metric_options = ["euclidean", "manhattan"]
+model_options_results = {}
+
+for weights in weight_options:
+    for metric in metric_options:
+        f1_scores = []
+        accuracies = []
+
+        for n_neighbors in neighbors:
+            model = make_pipeline(
+                StandardScaler(),
+                KNeighborsClassifier(
+                    n_neighbors=n_neighbors,
+                    weights=weights,
+                    metric=metric,
+                ),
+            )
+            model.fit(X_train, y_train)
+            predictions = model.predict(X_test)
+
+            f1_scores.append(
+                f1_score(y_test, predictions, pos_label="Yes", zero_division=0)
+            )
+            accuracies.append(accuracy_score(y_test, predictions))
+
+        model_options_results[(weights, metric)] = {
+            "F1": f1_scores,
+            "Accuracy": accuracies,
+        }
+
+# Scaler comparison: StandardScaler vs RobustScaler
+
+scaler_options = {
+    "StandardScaler": StandardScaler,
+    "RobustScaler": RobustScaler,
+}
+scaler_results = {}
+
+for scaler_name, scaler in scaler_options.items():
+    f1_scores = []
+    accuracies = []
+
+    for n_neighbors in neighbors:
+        model = make_pipeline(
+            scaler(),
+            KNeighborsClassifier(n_neighbors=n_neighbors),
+        )
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
+
+        f1_scores.append(
+            f1_score(y_test, predictions, pos_label="Yes", zero_division=0)
+        )
+        accuracies.append(accuracy_score(y_test, predictions))
+
+    scaler_results[scaler_name] = {
+        "F1": f1_scores,
+        "Accuracy": accuracies,
+    }
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# Plotting the F1 scores and accuracies for each scaler option across different numbers of neighbors (k) to visually compare their performance on the test set.
+
+for scaler_name, scores in scaler_results.items():
+    axes[0].plot(neighbors, scores["F1"], marker="o", label=scaler_name)
+    axes[1].plot(neighbors, scores["Accuracy"], marker="s", label=scaler_name)
+
+for axis, metric_name in zip(axes, ["Test F1 (Yes)", "Test Accuracy"]):
+    axis.set_xlabel("Number of neighbours (k)")
+    axis.set_ylabel("Score")
+    axis.set_title(metric_name)
+    axis.set_xticks(neighbors)
+    axis.set_ylim(0, 1)
+    axis.legend(title="Scaler")
+    axis.grid(True)
+
+fig.suptitle("StandardScaler vs RobustScaler")
+fig.tight_layout()
+plt.show()
+
+print("\nBest and worst test scores by scaler:")
+for scaler_name, scores in scaler_results.items():
+    print(f"\n{scaler_name}:")
+    for metric_name, values in scores.items():
+        best_index = int(np.argmax(values))
+        worst_index = int(np.argmin(values))
+        print(
+            f"  {metric_name}: best = {values[best_index]:.4f} "
+            f"(k={neighbors[best_index]}), worst = {values[worst_index]:.4f} "
+            f"(k={neighbors[worst_index]})"
+        )
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+for (weights, metric), scores in model_options_results.items():
+    label = f"{weights}, {metric}"
+    axes[0].plot(neighbors, scores["F1"], marker="o", label=label)
+    axes[1].plot(neighbors, scores["Accuracy"], marker="s", label=label)
+
+for axis, metric_name in zip(axes, ["Test F1 (Yes)", "Test Accuracy"]):
+    axis.set_xlabel("Number of neighbours (k)")
+    axis.set_ylabel("Score")
+    axis.set_title(metric_name)
+    axis.set_xticks(neighbors)
+    axis.set_ylim(0, 1)
+    axis.legend(title="Weights, distance metric")
+    axis.grid(True)
+
+# Plotting the F1 scores and accuracies for each combination of weights and distance metrics across different numbers of neighbors (k) to visually compare their performance on the test set.
+
+fig.suptitle("KNN weights and distance metric comparison")
+fig.tight_layout()
+plt.show()
+
+print("\nBest and worst test scores by KNN settings:")
+for (weights, metric), scores in model_options_results.items():
+    print(f"\nWeights: {weights}, distance metric: {metric}")
+    for metric_name, values in scores.items():
+        best_index = int(np.argmax(values))
+        worst_index = int(np.argmin(values))
+        print(
+            f"  {metric_name}: best = {values[best_index]:.4f} "
+            f"(k={neighbors[best_index]}), worst = {values[worst_index]:.4f} "
+            f"(k={neighbors[worst_index]})"
+        )
 
 no_rows_3x = y_train[y_train == "No"].sample(
     n=3 * int(y_train.eq("Yes").sum()), random_state=42
