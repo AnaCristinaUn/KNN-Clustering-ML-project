@@ -3,11 +3,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from pathlib import Path
+from preprocessing import clean_transactions
 # from preprocessing import preprocess_text
 
 # Getting the dataset
 data_path = Path(__file__).resolve().parents[1] / "data" / "chargebackFrauds.csv"         # Relative path to the CSV file
-data = pd.read_csv(data_path)                                                             # Reading the CSV file into a DataFrame
+raw_data = pd.read_csv(data_path)
+
+print("\nDataset column summary:")
+column_summary = pd.DataFrame({
+    "Data type": raw_data.dtypes.astype(str),
+    "Missing values": raw_data.isna().sum(),
+    "Unique values": raw_data.nunique(),
+})
+print(column_summary.to_string())
+
+data = clean_transactions(raw_data)                                                       # Loading and cleaning the transaction data
 
 #Printing the number of samples in the dataset
 print("Number of samples:", len(data))
