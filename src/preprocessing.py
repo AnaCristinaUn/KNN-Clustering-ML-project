@@ -1,4 +1,56 @@
+import numpy as np
 import pandas as pd
+
+
+def add_transaction_velocity_features(data):
+    """Add per-card activity features based only on earlier transactions."""
+    if not {"Card Number", "Date"}.issubset(data.columns):
+        raise ValueError("Data must contain 'Card Number' and 'Date' columns")
+    if not pd.api.types.is_datetime64_any_dtype(data["Date"]):
+        raise TypeError("'Date' must contain datetime values")
+
+    feature_columns = [
+        "CardTransactionCount",
+        "TransactionsLastHour",
+        "TransactionsLast24h",
+        "TimeSincePreviousTransaction",
+    ]
+    original_index = data.index
+    chronological_data = data.reset_index(drop=True).sort_values(
+        ["Card Number", "Date"], kind="stable"
+    )
+    features = np.zeros((len(data), len(feature_columns)))
+
+    card_groups = chronological_data.groupby("Card Number", sort=False)
+    for positions in card_groups.indices.values():
+        card_transactions = chronological_data.iloc[positions]
+        timestamps = card_transactions["Date"].to_numpy(dtype="datetime64[ns]")
+        previous = timestamps.searchsorted(timestamps, side="left")
+        previous_hour = timestamps.searchsorted(
+            timestamps - pd.Timedelta(hours=1).to_timedelta64(),
+            side="left",
+        )
+        previous_day = timestamps.searchsorted(
+            timestamps - pd.Timedelta(hours=24).to_timedelta64(),
+            side="left",
+        )
+        previous_timestamps = timestamps[np.maximum(previous - 1, 0)]
+        elapsed_seconds = (
+            (timestamps - previous_timestamps) / pd.Timedelta(seconds=1)
+        )
+        elapsed_seconds[previous == 0] = 0
+
+        features[positions] = np.column_stack(
+            (
+                previous,
+                previous - previous_hour,
+                previous - previous_day,
+                elapsed_seconds,
+            )
+        )
+
+    chronological_data[feature_columns] = features
+    return chronological_data.sort_index().set_axis(original_index)
 
 
 def clean_transactions(data):
